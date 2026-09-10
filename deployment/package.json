@@ -1,0 +1,49 @@
+{
+  "name": "deployment",
+  "version": "1.0.0",
+  "bin": {
+    "app": "bin/app.ts"
+  },
+  "//pinning": [
+    "Every version below is EXACT \u2014 no ^ ranges. A caret on aws-cdk-lib means two",
+    "installs a week apart synthesize different CloudFormation from the same commit,",
+    "and for a sample that people deploy into their own accounts that is a",
+    "supply-chain and a reproducibility problem at once. Upgrading is now a visible,",
+    "reviewable diff. The versions are the ones this tree was last built and",
+    "cdk-nag-scanned with.",
+    "",
+    "pnpm-lock.yaml is the ONE lockfile. package-lock.json used to sit beside it and",
+    "the two had already drifted (package-lock said aws-cdk-lib 2.258.1 while",
+    "node_modules held 2.266.0), which is the whole problem with keeping both: the",
+    "one you install from is whichever tool you happened to run. It was deleted, and",
+    "`packageManager` below plus an `npm` preinstall guard keep it from coming back.",
+    "",
+    "Install with `pnpm install --frozen-lockfile` (or `make cdk-install`), never a",
+    "bare `install` \u2014 frozen fails on a lockfile that disagrees with this file",
+    "instead of quietly resolving past it."
+  ],
+  "scripts": {
+    "preinstall": "node -e \"if(!(process.env.npm_config_user_agent||'').startsWith('pnpm')){console.error('\\nUse pnpm, not npm: pnpm install --frozen-lockfile\\npnpm-lock.yaml is the only lockfile here; npm would write a second one.\\n');process.exit(1)}\"",
+    "build": "tsc",
+    "watch": "tsc -w",
+    "cdk": "cdk",
+    "deploy": "cdk deploy",
+    "deploy:agent": "cdk deploy Go2AgentCoreStack --exclusively",
+    "deploy:ec2": "cdk deploy Go2Ec2Stack --exclusively",
+    "destroy": "cdk destroy",
+    "synth": "cdk synth"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "2.266.0",
+    "constructs": "10.8.1",
+    "source-map-support": "0.5.21"
+  },
+  "devDependencies": {
+    "aws-cdk": "2.1139.0",
+    "cdk-nag": "2.38.2",
+    "typescript": "5.9.3",
+    "ts-node": "10.9.2",
+    "@types/node": "20.19.43"
+  },
+  "packageManager": "pnpm@11.24.0"
+}

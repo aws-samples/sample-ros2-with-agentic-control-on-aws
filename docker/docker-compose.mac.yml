@@ -1,0 +1,63 @@
+services:
+  unitree_ros:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    environment:
+      - ROBOT_IP=${ROBOT_IP}
+      - CONN_TYPE=${CONN_TYPE:-webrtc}
+      # LAN flavour when CONN_TYPE is not 'remote': sta = shared network (uses
+      # ROBOT_IP), ap = the robot's own hotspot (fixed 192.168.12.1, ignores
+      # ROBOT_IP). AP is the only path that never calls Unitree's cloud, so it
+      # is immune to the EdgeOne WAF blocks — at the cost of the host's WiFi
+      # having no internet uplink while joined to the dog.
+      - LOCAL_MODE=${LOCAL_MODE:-sta}
+      - WEBRTC_SERVER_HOST=0.0.0.0
+      - WEBRTC_SERVER_PORT=${WEBRTC_SERVER_PORT:-9991}
+      - AES_128_KEY=${AES_128_KEY:-}
+      - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+      # Bedrock region for the vision tools. Left empty on purpose — the code
+      # owns the default, so an unset var here falls back rather than pinning a
+      # stale region in two places.
+      - SCENE_REGION=${SCENE_REGION:-}
+      - KVS_STREAM_NAME=${KVS_STREAM_NAME:-go2-robot-01-camera}
+      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-us-east-1}
+      # Credentials for the vision tools and KVS upload. Passed through from YOUR
+      # SHELL, not from docker/.env — see the credentials section in
+      # docker/.env.example for why, and for the `aws configure
+      # export-credentials` one-liner that fills these with short-lived values.
+      # Empty defaults so `make up` still works with no AWS access at all
+      # (KVS_ENABLED=false and no scene tools).
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
+      - AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN:-}
+      # Alternative to the three above: use your existing profile file instead of
+      # copying credentials into the environment. Uncomment this AND the ~/.aws
+      # mount below, then `export AWS_PROFILE=<name>` in your shell.
+      # - AWS_PROFILE=${AWS_PROFILE:-}
+      # Bedrock Guardrail for the container's scene tools. Optional locally; the
+      # cloud stacks set it automatically. Get the id with:
+      #   aws cloudformation describe-stacks --stack-name Go2GuardrailStack \
+      #     --query "Stacks[0].Outputs[?OutputKey=='GuardrailId'].OutputValue" \
+      #     --output text
+      - GUARDRAIL_ID=${GUARDRAIL_ID:-}
+      - GUARDRAIL_VERSION=${GUARDRAIL_VERSION:-DRAFT}
+    ports:
+      - "9991:9991/tcp"
+      - "9991:9991/udp"
+      - "8766:8765/tcp"  # Foxglove bridge (8765 conflicts on host; expose as 8766)
+    volumes:
+      - ./logs:/var/log/go2  # tail driver logs from host
+      # Read-only AWS profile file, the alternative to copying credentials into
+      # the environment above. Uncomment together with AWS_PROFILE.
+      # - ~/.aws:/root/.aws:ro
+    command:
+      - bash
+      - -c
+      # coco_model: fast | balanced | accurate | best (accuracy up, speed down).
+      # coco_threshold: minimum detection confidence to publish.
+      # Unlike SCENE_REGION these carry their own defaults — they land in launch
+      # arguments, so an empty value would be passed as a literal empty string
+      # (and for the double-typed threshold that is a parameter type error).
+      - "mkdir -p /var/log/go2 && /ros_entrypoint.sh ros2 launch go2_robot_sdk robot.launch.py rviz2:=false nav2:=false slam:=false foxglove:=true joystick:=false teleop:=false kvs:=${KVS_ENABLED:-false} coco_model:=${COCO_MODEL:-balanced} coco_threshold:=${COCO_THRESHOLD:-0.5} 2>&1 | tee /var/log/go2/robot.log"
+    restart: unless-stopped

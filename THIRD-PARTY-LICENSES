@@ -1,0 +1,371 @@
+# Third-Party Licenses
+
+This is the attribution document for third-party software included in, or required
+by, this repository.
+
+This sample is released under the MIT No Attribution license (MIT-0) — see
+`LICENSE` — which covers Amazon's contributions only. Every third-party component
+below is used under its own license. Unlike most samples, this repository is a
+**fork** of an existing open source project and redistributes third-party source
+code **in-tree**, so the full license texts are reproduced at the end of this file
+rather than referenced by SPDX identifier alone. Retain them when you
+redistribute.
+
+> **Note**: The dependency tables below list **direct** dependencies at their
+> **exact pinned versions**. Transitive dependencies are not enumerated here —
+> they are pinned in the lockfiles, which are the right input for an SBOM and a
+> CVE scan:
+>
+> | Lockfile | Covers |
+> |---|---|
+> | `requirements.lock` | ROS 2 SDK container image |
+> | `voice_agent/requirements.lock` | host-side voice agent |
+> | `voice_agent/requirements-agentcore.lock` | AgentCore Runtime image |
+> | `deployment/pnpm-lock.yaml`, `deployment/package-lock.json` | CDK infrastructure |
+>
+> Regenerate these tables with:
+>
+> ```bash
+> # infrastructure (npm)
+> npx license-checker --production --summary --start deployment
+>
+> # python (ROS2 image, host agent, AgentCore image)
+> pip-licenses --from=mixed --format=markdown
+> ```
+>
+> **Pinning is reproducibility, not vulnerability clearance.** CVE matching against
+> OSV has been run over every pinned Python package and over the npm tree:
+>
+> ```bash
+> make audit          # scripts/audit_deps.py (OSV) + npm audit
+> ```
+>
+> As of 2026-09-04 that reports no unaccepted advisories. One finding is accepted
+> with evidence: `setuptools==65.5.1`, a build-time-only pin whose advisories are
+> all in `package_index`/sdist code paths this image never reaches — the analysis
+> is at the pin in `docker/Dockerfile`.
+>
+> That check covers PyPI distributions only. It does **not** cover OS packages from
+> the base images above, or the vendored `libvoxel.wasm`. For those, and before
+> shipping anything derived from this repository, produce an SBOM and scan it:
+>
+> ```bash
+> syft . -o cyclonedx-json > sbom.json
+> grype sbom:sbom.json
+> ```
+
+---
+
+## Vendored source (redistributed in-tree)
+
+These components are **copied into this repository** and ship with it. Their
+license obligations apply to anyone who redistributes this repo.
+
+| Component | Upstream | Version | License |
+|---|---|---|---|
+| `go2_robot_sdk`, `go2_interfaces`, `lidar_processor`, `lidar_processor_cpp`, `speech_processor` | [abizovnuralem/go2_ros2_sdk](https://github.com/abizovnuralem/go2_ros2_sdk) | forked at `576ee64` (2025-02-10), upstream commits merged through 2025-10 | BSD-2-Clause (see ambiguity note below) |
+| `coco_detector` | [jfrancis71/ros2_coco_detector](https://github.com/jfrancis71/ros2_coco_detector) | vendored 2024-07-22 | MIT |
+| `go2_robot_sdk/external_lib/libvoxel.wasm` | unknown — inherited from upstream | committed 2024-02-29 | **undetermined** (see note below) |
+
+Copyright holders, as stated in the vendored sources:
+
+- `Copyright (c) 2024, RoboVerse community` — the go2_ros2_sdk packages
+- `Copyright (c) 2024 Julian Francis` — `coco_detector`
+
+Amazon's modifications to the vendored ROS2 packages are marked in-file with a
+`Modified by Amazon.com, Inc. or its affiliates` notice. Files authored entirely
+by Amazon inside those package directories (`kvs_producer_node.py`,
+`image_republisher_node.py`) carry an Amazon copyright and MIT-0 header instead.
+
+---
+
+## Upstream license ambiguity (resolved conservatively)
+
+The upstream project states its license three different ways, and the statements
+do not agree:
+
+| Where | Claim |
+|---|---|
+| upstream root `LICENSE` | BSD-2-Clause, "Copyright (c) 2024, RoboVerse community" |
+| per-file SPDX headers throughout `go2_robot_sdk/` | `BSD-3-Clause` |
+| `go2_robot_sdk/LICENSE` and `go2_robot_sdk/package.xml` | Apache-2.0 |
+
+All three are permissive and none conflicts with the others, so this is a
+documentation defect upstream rather than a barrier to redistribution. Because
+the ambiguity cannot be resolved from the sources alone, this repository complies
+with the **union of all three sets of obligations**:
+
+1. **Retain the copyright notice, conditions, and disclaimer** (BSD-2 §1, BSD-3 §1).
+2. **Make no endorsement claim** using the names of the upstream project or its
+   contributors (BSD-3 §3). See the trademark note in `README.md`.
+3. **Mark modified files as changed** (Apache-2.0 §4(b)) — done via the
+   `Modified by` notices described above.
+4. **Reproduce all three license texts**, below.
+
+Complying with the strictest reading of each clause satisfies any one of the three
+licenses individually. Upstream's own `LICENSE` files are left in place at their
+original paths and have not been altered or removed.
+
+---
+
+## Undetermined provenance: `libvoxel.wasm`
+
+`go2_robot_sdk/external_lib/libvoxel.wasm` is a 9.5 KB WebAssembly binary that
+decodes the Go2's LIDAR voxel format. It is loaded at runtime by
+`go2_robot_sdk/go2_robot_sdk/infrastructure/sensors/lidar_decoder.py`.
+
+It was added upstream on 2024-02-29 with no stated origin, no author, and no
+license. It carries no license grant of any kind, and this repository cannot
+establish one. It is retained here because removing it disables LIDAR decoding,
+and it is flagged rather than silently redistributed.
+
+Anyone redistributing this repository should treat this file as an open question
+and consider one of: obtaining clarification from the upstream project, fetching
+it at build time from upstream instead of vendoring it, or removing it and the
+LIDAR decode path.
+
+**This is an open-source-release blocker, not a documentation item.** An
+undetermined-license binary that is executed at runtime cannot be cleared by
+disclosure. It needs an OSPO decision, and that has the longest lead time of any
+open item in this repository — raise it before anything else.
+
+Integrity, meanwhile, is pinned. `lidar_decoder.py` verifies the file's SHA-256
+against `LIBVOXEL_SHA256` and refuses to instantiate the module on a mismatch, so
+the bytes that execute are the bytes reviewed here:
+
+```
+SHA-256  1ba27f065199954dc562b233aa38ea775ac687118cce77b5c71bc14e17e05542
+Size     9,520 bytes
+```
+
+That fixes tampering and corruption. It does not fix provenance.
+
+---
+
+## Container base images
+
+Every base image is pulled from **ECR Public** and pinned by digest, so a build of
+a given commit is reproducible — see the note at the top of `docker/Dockerfile`.
+The tag is recorded for readability only; the digest is what Docker resolves.
+
+`public.ecr.aws/docker/library/*` is ECR Public's mirror of the Docker Hub official
+images. The two digests below are byte-identical to the `ros:humble-ros-base` and
+`python:3.13-slim` images they replaced, so the licensing is unchanged — the
+upstream projects are still the ROS 2 and CPython official images.
+
+| Image | Tag | Digest | License |
+|---|---|---|---|
+| `public.ecr.aws/docker/library/ros` (ROS 2 SDK image, `docker/Dockerfile`) | `humble-ros-base` | `sha256:75dd3aba34a3838dadbb31a9f7bef769bdfa8713e6cec686fc868db2981b0987` | Apache-2.0 (ROS 2 packages); base Ubuntu content under its own licenses |
+| `public.ecr.aws/docker/library/python` (AgentCore image, `voice_agent/Dockerfile.agentcore`) | `3.13-slim` | `sha256:9d2e5553305c7c7b0097999bb17187c69b921ccd6bc9d40e4bb5ebe652c00285` | PSF-2.0 (CPython); Debian base under its own licenses |
+| `public.ecr.aws/lambda/python` (SceneDescriber) | `3.11` | `sha256:755093e1da2ba33f6bd2295c5a6a7ed8b94f1ef347b6ca649874d9cbef5a3e3c` | Amazon Linux + PSF-2.0 |
+
+The SceneDescriber image additionally installs `imageio-ffmpeg==0.6.0`
+(BSD-2-Clause), which bundles a static **FFmpeg** binary (LGPL-2.1-or-later for
+the default build).
+
+---
+
+## Runtime dependencies — ROS2 image
+
+Source: `requirements.txt`
+
+| Package | Version | License |
+|---|---|---|
+| aiortc | 1.15.0 | BSD-3-Clause |
+| unitree_webrtc_connect | 2.2.0 | MIT (per project README; not declared in package metadata) |
+| aiohttp | 3.14.3 | Apache-2.0 |
+| paho-mqtt | 2.1.0 | EPL-2.0 OR EDL-1.0 |
+| python-dotenv | 1.2.3 | BSD-3-Clause |
+| wasmtime | 48.0.0 | Apache-2.0 WITH LLVM-exception |
+| open3d | 0.18.0 | MIT |
+| torch | 2.14.0 | BSD-3-Clause |
+| torchvision | 0.29.0 | BSD-3-Clause |
+| pycryptodome | 3.23.0 | BSD-2-Clause AND Public Domain |
+| opencv-python | 4.11.0.86 | Apache-2.0 (MIT packaging wrapper) |
+| pydub | 0.25.1 | MIT |
+| numpy | 1.26.4 | BSD-3-Clause |
+| boto3 | 1.43.88 | Apache-2.0 |
+| requests | 2.34.2 | Apache-2.0 |
+
+Build-time pins in `docker/Dockerfile`, not in `requirements.txt`:
+
+| Package | Version | License |
+|---|---|---|
+| setuptools | 65.5.1 | MIT |
+| packaging | 21.3 | Apache-2.0 OR BSD-2-Clause |
+
+> **Note**: `paho-mqtt` is dual-licensed under the Eclipse Public License 2.0 and
+> the Eclipse Distribution License 1.0. EPL-2.0 is weak-copyleft, but the package
+> is installed by pip at image build time and is not redistributed in this
+> repository's source, so it imposes no obligation on this repo's own license.
+> Under the EDL-1.0 election it is a plain BSD-3-Clause grant.
+
+---
+
+## Runtime dependencies — host agent and AgentCore image
+
+Sources: `voice_agent/requirements.txt`, `voice_agent/requirements-agentcore.txt`
+
+| Package | Version | License |
+|---|---|---|
+| strands-agents | 1.54.0 | Apache-2.0 |
+| strands-agents-tools | 0.8.8 | Apache-2.0 |
+| strands-robots[sim-mujoco] | 0.5.1 | Apache-2.0 |
+| bedrock-agentcore | 1.22.0 | Apache-2.0 |
+| aws_sdk_bedrock_runtime | 0.11.0 (transitive, via `strands-agents[bidi]`) | Apache-2.0 |
+| boto3 | 1.43.88 | Apache-2.0 |
+| aiohttp | 3.14.3 | Apache-2.0 |
+| numpy | 2.5.2 | BSD-3-Clause |
+| Pillow | 12.3.0 | MIT-CMU |
+| websockets | 17.1 | BSD-3-Clause |
+| sounddevice | 0.5.6 | MIT |
+| pyaudio | 0.2.14 | MIT |
+
+> **Note**: `strands-robots[sim-mujoco]` pulls `mujoco` (Apache-2.0) and
+> `robot-descriptions` (Apache-2.0), the latter of which downloads the Go2 MJCF
+> model and meshes from MuJoCo Menagerie (Apache-2.0, BSD-3-Clause for some
+> models) on first use. Those assets are cached at runtime under
+> `~/.cache/robot_descriptions` and are never vendored into this repository.
+> `pyaudio` requires the system `portaudio` library (MIT), installed separately.
+
+---
+
+## Infrastructure (CDK)
+
+Source: `deployment/package.json`
+
+### Production dependencies
+
+| Package | Version | License |
+|---|---|---|
+| aws-cdk-lib | 2.266.0 | Apache-2.0 |
+| constructs | 10.8.1 | Apache-2.0 |
+| source-map-support | 0.5.21 | MIT |
+
+### Development dependencies
+
+| Package | Version | License |
+|---|---|---|
+| aws-cdk | 2.1139.0 | Apache-2.0 |
+| cdk-nag | 2.38.2 | Apache-2.0 |
+| typescript | 5.9.3 | Apache-2.0 |
+| ts-node | 10.9.2 | MIT |
+| @types/node | 20.19.43 | MIT |
+
+---
+
+## License compatibility note
+
+Every license above is permissive and compatible with distributing this
+repository as a sample. The MIT-0 license on Amazon's contributions waives the
+attribution requirement for *those contributions only* — it does not and cannot
+waive the attribution that BSD-2-Clause, BSD-3-Clause, and MIT require for the
+vendored upstream code. **If you redistribute this repository, you must retain
+the notices reproduced below.** Removing them, or treating the whole tree as
+attribution-free because the root license is MIT-0, would breach the upstream
+licenses.
+
+Two items are worth singling out. `paho-mqtt`'s EPL-2.0 option is the only
+weak-copyleft license in the dependency set, and it is neutralized by the EDL-1.0
+election and by not being redistributed. `libvoxel.wasm` is the one component
+with no license grant at all; see its section above.
+
+Regenerate the dependency tables with the commands at the top of this file.
+
+---
+
+## Full license texts
+
+### BSD-2-Clause — go2_ros2_sdk (upstream root `LICENSE`)
+
+```
+BSD 2-Clause License
+
+Copyright (c) 2024, RoboVerse community
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+```
+
+### BSD-3-Clause — as asserted by the per-file SPDX headers in `go2_robot_sdk/`, `lidar_processor/`, `lidar_processor_cpp/`, `speech_processor/`
+
+```
+BSD 3-Clause License
+
+Copyright (c) 2024, RoboVerse community
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its
+   contributors may be used to endorse or promote products derived from
+   this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+```
+
+### Apache-2.0 — as asserted by `go2_robot_sdk/LICENSE` and `go2_robot_sdk/package.xml`
+
+The full Apache License 2.0 text is retained in this repository at its original
+upstream path, `go2_robot_sdk/LICENSE`, and is also available at
+<http://www.apache.org/licenses/LICENSE-2.0>.
+
+### MIT — `coco_detector`
+
+```
+MIT License
+
+Copyright (c) 2024 Julian Francis
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```

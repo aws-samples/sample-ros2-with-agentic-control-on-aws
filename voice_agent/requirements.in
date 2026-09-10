@@ -1,0 +1,95 @@
+# DIRECT host-side deps for every voice_agent entry point. This is the file a
+# human edits; `make venv` installs the compiled closure next to it,
+# voice_agent/requirements.txt (hand-written .in -> generated .txt, the standard
+# pip-tools/uv layout). This is the ONLY host requirements pair.
+#
+# It is for the HOST (your Mac), NOT a container. The two container images have
+# their own files and share nothing with this one:
+#   - requirements.in (repo root)            → the ROS2 SDK image (owns the robot link)
+#   - voice_agent/requirements-agentcore.in  → the AgentCore Runtime image
+#
+# Covers all five entry points:
+#   - main.py             → ROS2/Foxglove transport (the default)
+#   - main_sim.py         → MuJoCo simulation (no robot, no container)
+#   - main_sonic.py       → direct WebRTC transport (also needs unitree-webrtc-connect)
+#   - agentcore_server.py → the agent as served on AgentCore Runtime
+#   - agentcore_client.py → thin local client for the hosted runtime (audio only)
+#
+# Requires Python 3.12+ (BidiNovaSonicModel):
+#   make venv
+#
+# EVERY direct dependency is pinned exactly here, and the compiled .txt pins the
+# transitive closure — two builds of one commit should give one agent. Edit a pin
+# here, then recompile:
+#
+#   uv pip compile voice_agent/requirements.in --upgrade \
+#     --python-platform aarch64-apple-darwin --python-version 3.12 \
+#     -o voice_agent/requirements.txt
+#
+# Commit both. The pins are for reproducibility, not a CVE clearance — `make
+# audit` scans the compiled file; run it before shipping.
+
+# Strands Agents SDK (bidirectional / Nova Sonic support).
+#
+# The [bidi] extra is what pulls the Bedrock bidirectional streaming client
+# (aws-sdk-bedrock-runtime + smithy) that BidiNovaSonicModel imports. Do NOT pin
+# that client by hand here: strands and the client are tightly coupled and the
+# coupling has already broken twice on a rename (BedrockRuntimeClient ->
+# AsyncBedrockRuntimeClient, client 0.8.0 / strands 1.54.0). The extra carries
+# whatever narrow range the installed strands actually expects.
+#
+# 1.54.0 is also the release that adopted AsyncBedrockRuntimeClient. Anything
+# older with a current client dies at import, so every agent entry point would
+# break on `import ... BedrockRuntimeClient` in a fresh venv. Do not lower it.
+#
+# Pinned exactly rather than floored, and the [bidi] extra is what keeps that
+# safe: the lockfile records which aws-sdk-bedrock-runtime this release actually
+# resolved to, so the coupling that broke twice on a rename is now recorded
+# instead of re-resolved on every install.
+strands-agents[bidi]==1.54.0
+strands-agents-tools==0.8.8
+
+# AWS SDK (Bedrock / Nova Sonic credentials + session)
+boto3==1.43.88
+
+# Foxglove WebSocket client transport (CDR encoded ourselves)
+aiohttp==3.14.3
+
+# describe_scene tool: decode the camera's sensor_msgs/Image (numpy) and
+# JPEG-encode it (Pillow) before sending to Bedrock. boto3 (above) makes the call.
+numpy==2.5.2
+Pillow==12.3.0
+
+# Audio: mic capture (sounddevice) + agent TTS playback (pyaudio, via strands
+# bidi BidiAudioIO). pyaudio needs the portaudio system lib: brew install portaudio
+sounddevice==0.5.6
+pyaudio==0.2.14
+
+# AgentCore Runtime client (agentcore_client.py): SigV4 pre-signed wss:// URLs
+# and reading the runtime ARN out of the stack outputs, so there is no ARN to
+# copy and paste. Imported lazily, so the other entry points never touch it.
+bedrock-agentcore==1.22.0
+websockets==17.1
+
+# Simulation transport (main_sim.py): the Strands Labs robots project
+# (https://strandsagents.com/docs/labs/robots/) with its MuJoCo backend, which
+# is what puts a Go2 on screen with no robot in the room.
+#
+# The sim-mujoco extra pulls mujoco (and `mjpython`, which macOS needs to open
+# the viewer window), imageio for video, mink/qpsolvers for IK, and
+# robot-descriptions — the last of which fetches the Go2's MJCF and meshes from
+# MuJoCo Menagerie on first use (~40 s, then cached in ~/.cache/robot_descriptions).
+#
+# NOT the `mesh` extra (eclipse-zenoh): the lab auto-joins a Zenoh peer-to-peer
+# mesh by default, and sim_dog passes mesh=False so nothing starts a peer network.
+#
+# Uncommented, unlike the WebRTC block below, because `make voice-sim` is the one
+# entry point that needs no hardware and no credentials beyond Bedrock — it
+# should work straight after `make venv`. It costs ~200 MB.
+strands-robots[sim-mujoco]==0.5.1
+
+# Direct-WebRTC transport — ONLY for main_sonic.py (drives the robot directly,
+# bypassing the SDK container) and for the one-off `unitree-fetch-aes-key` run.
+# main.py (ROS2 transport) does not need this, so it's left commented to keep
+# the default install light. Uncomment to use main_sonic.py:
+# unitree-webrtc-connect==2.2.0

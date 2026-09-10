@@ -1,0 +1,43 @@
+{
+  "app": "npx ts-node --prefer-ts-exts bin/app.ts",
+
+  "//region": [
+    "Region is deliberately NOT pinned here. The CLI reads a top-level 'region'",
+    "key and it outranks AWS_REGION, which would silently override the Makefile's",
+    "GO2_REGION (`make deploy-agentcore GO2_REGION=us-west-2`) and put the stack",
+    "in one region while that target's aws calls used another -- the exact split",
+    "the old deploy script existed to prevent. The Makefile pins AWS_REGION /",
+    "AWS_DEFAULT_REGION, the CLI turns that into CDK_DEFAULT_REGION, and",
+    "bin/app.ts defaults to us-east-1 if it is unset. Assets follow the stack's",
+    "env, so they cannot diverge from it."
+  ],
+
+  "//requireApproval": [
+    "The Fargate and AgentCore stacks both change IAM and security groups, which",
+    "otherwise prompts on every deploy. Set here rather than as a flag so every",
+    "entry point (make, npm, bare cdk) behaves identically."
+  ],
+  "requireApproval": "never",
+
+  "context": {
+    "@aws-cdk/core:stackRelativeExports": true,
+
+    "//": [
+      "Deploy knobs, read at synth time. Override with --context key=value, e.g.",
+      "  npm run deploy:agent -- --context novaSonicVoice=en-us.joanna",
+      "",
+      "deviceId is read ONCE in bin/app.ts and passed to all three stacks as a",
+      "required prop -- it names the KVS stream (<deviceId>-camera) and the IoT",
+      "topic prefix, and every stack has to address the same names. It used to be",
+      "a separate CfnParameter per stack, i.e. three values to keep in sync by",
+      "hand. Changing it REPLACES the KVS stream, so treat it as a new robot.",
+      "",
+      "novaSonicVoice is Go2AgentCoreStack's alone. modelRegion is absent on",
+      "purpose: that stack falls back to its own region, keeping the demo",
+      "single-region however it is deployed. Set it only when deploying somewhere",
+      "Nova Sonic is unavailable (--context modelRegion=...)."
+    ],
+    "novaSonicVoice": "en-us.matthew",
+    "deviceId": "go2-robot-01"
+  }
+}

@@ -1,0 +1,52 @@
+# DIRECT deps for the Go2 agent running ON Bedrock AgentCore Runtime (the
+# container). This is the file a human edits; the image installs the compiled
+# closure, voice_agent/requirements-agentcore.txt (hand-written .in -> generated
+# .txt, the standard pip-tools/uv layout).
+#
+# This is the cloud half of voice_agent/requirements.in: everything the agent
+# and its tools need, MINUS the audio libraries. There is no microphone or
+# speaker in a microVM — audio arrives over the WebSocket as base64 PCM, so
+# sounddevice/pyaudio (and the portaudio system lib) are deliberately absent.
+#
+# Built into an ARM64 image by voice_agent/Dockerfile.agentcore. The local thin
+# client that talks to this runtime installs voice_agent/requirements.txt like
+# every other host-side entry point (`make venv`).
+#
+# EVERY direct dependency is pinned exactly here, and the compiled .txt pins the
+# transitive closure — an image that drives a physical robot should not change
+# because a transitive release landed between two builds, and the closure is what
+# `pip install -r` actually reads. Edit a pin here, then recompile:
+#
+#   uv pip compile voice_agent/requirements-agentcore.in --upgrade \
+#     --python-platform aarch64-manylinux_2_28 --python-version 3.13 \
+#     -o voice_agent/requirements-agentcore.txt
+
+# AgentCore Runtime SDK — BedrockAgentCoreApp, @app.websocket, /ping.
+# Pulls in starlette + uvicorn + the websockets library.
+bedrock-agentcore==1.22.0
+
+# Strands Agents SDK (bidirectional / Nova Sonic support).
+#
+# The [bidi] extra is what pulls the Bedrock bidirectional streaming client
+# (aws-sdk-bedrock-runtime + smithy) that BidiNovaSonicModel imports. Do NOT pin
+# that client by hand here: strands and the client are tightly coupled and the
+# coupling has already broken twice on a rename (BedrockRuntimeClient ->
+# AsyncBedrockRuntimeClient, client 0.8.0 / strands 1.54.0). The extra carries
+# whatever narrow range the installed strands actually expects.
+#
+# FLOOR OF 1.54.0: that is the release that adopted AsyncBedrockRuntimeClient.
+# Older strands with a current client dies at import, and the ARM64 image build
+# fails at the Dockerfile's import smoke test.
+strands-agents[bidi]==1.54.0
+strands-agents-tools==0.8.8
+
+# AWS SDK (Bedrock / Nova Sonic credentials + session, KVS, Lambda)
+boto3==1.43.88
+
+# Foxglove WebSocket client transport (CDR encoded ourselves)
+aiohttp==3.14.3
+
+# Vision tools: decode the camera's sensor_msgs/Image (numpy) and JPEG-encode
+# it (Pillow) before sending to Bedrock.
+numpy==2.5.2
+Pillow==12.3.0

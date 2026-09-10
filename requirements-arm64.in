@@ -1,0 +1,39 @@
+# aarch64 (Apple Silicon laptop) direct dependencies for the ROS 2 SDK container
+# image — the SAME set as requirements.in, which the `-r` below pulls in whole, with
+# one substitution: torch/torchvision come from PyTorch's CPU index. This is an
+# override layer, not a fork; edit shared pins in requirements.in.
+#
+# Why a second file has to exist. `torch==2.14.0` on PyPI is a DIFFERENT BUILD per
+# architecture, and only one of the two runs on the machine that gets it:
+#
+#   x86_64  -> CUDA build. Correct for the deployed target. The EC2 instance is a
+#              g4dn (T4) and it launches the detector with coco_device:=cuda, so
+#              the CUDA half is the point (deployment/lib/go2-ec2-stack.ts).
+#   aarch64 -> NVIDIA Grace/sbsa CUDA build. Bundles ~3.3 GB of nvidia-*-cu13
+#              wheels and an NVPL-linked libtorch_cpu.so that SEGFAULTS at dlopen
+#              on Apple Silicon under Docker Desktop. `import torch` dies with
+#              SIGSEGV, which takes coco_detector_node with it (exit -11 at
+#              startup, before it logs anything), so nothing publishes
+#              /detected_objects or /annotated_image: no boxes in Lichtblick, no
+#              'find' / 'follow me', nothing for the KVS producer to stream.
+#
+# So this is not a convenience build for laptops. On aarch64 the PyPI pin does not
+# import at all, and the failure is silent in the image's own logs. The +cpu wheels
+# are the same upstream release with the CUDA half omitted; they also take the
+# closure from 15 nvidia-* packages to zero.
+#
+# `make lock` compiles this into requirements-arm64.txt, which docker/Dockerfile
+# installs when `uname -m` is aarch64 (requirements.txt otherwise). Both closures
+# are hashed, and `make audit` scans both.
+-r requirements.in
+
+# Emitted into the compiled file (uv --emit-index-url) so `pip install -r` can find
+# the +cpu wheels without the Dockerfile having to repeat this URL.
+--extra-index-url https://download.pytorch.org/whl/cpu
+
+# The +cpu LOCAL VERSION, not a bare ==2.14.0. PEP 440 ignores the local segment
+# when matching, so a bare pin is satisfied by the CUDA wheel as well — that is
+# precisely the resolution that segfaults, and it also means an in-place
+# `pip install torch==2.14.0` over a CUDA install is a silent no-op.
+torch==2.14.0+cpu
+torchvision==0.29.0+cpu

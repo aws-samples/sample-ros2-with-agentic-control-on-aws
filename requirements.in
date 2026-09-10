@@ -1,0 +1,82 @@
+# DIRECT dependencies for the ROS 2 SDK container image (docker/Dockerfile).
+#
+# This is the file a human edits. It is NOT what the image installs — that is
+# requirements.txt, the fully-resolved transitive closure compiled from this file
+# (the standard pip-tools/uv layout: hand-written .in -> generated .txt).
+#
+# EVERY direct dependency is pinned to an exact version. That is deliberate and it
+# is not the same trade-off a library would make:
+#
+#   - This file builds a container image that drives a physical robot. An
+#     unpinned `torch` meant two builds of one commit could ship different
+#     inference behaviour, with nothing in the repo recording which.
+#   - Pinning here bounds the closure; pinning the closure in requirements.txt is
+#     what actually makes two builds of one commit install the same bytes, since
+#     that is the file `pip install -r` reads.
+#   - The versions below were resolved for the DEPLOYED target: linux/amd64,
+#     CPython 3.10 (what `ros:humble-ros-base` provides on the g4dn EC2 instance
+#     `make push-image` builds for).
+#
+# TWO closures are compiled from this one file, because a pin is not a build.
+# `torch==2.14.0` is a CUDA wheel on x86_64 and a Grace/sbsa CUDA wheel on aarch64
+# that segfaults on import under Docker Desktop on Apple Silicon — one pin, two
+# artifacts, one of which does not run:
+#
+#   requirements.txt        x86_64  — from this file alone.
+#   requirements-arm64.txt  aarch64 — from requirements-arm64.in, which is `-r` this
+#                                     file plus the torch/torchvision +cpu wheels.
+#                                     Read that file's header before touching torch.
+#
+# Upgrading is an explicit, reviewable act. Edit the pin here, then recompile BOTH
+# closures (`make lock`, or with --upgrade to move transitive versions too).
+#
+# Commit the .in and .txt together. Then scan the result — `make audit` reads the
+# compiled files, because pinning buys reproducibility, not the absence of CVEs.
+#
+# Hashes live in the compiled files, not here: `make lock` passes --generate-hashes
+# and every install path passes --require-hashes. Version pins stop drift; they do
+# not stop a re-uploaded or tampered artifact, which is what the hashes are for.
+# See "Hashes" in PE-REMEDIATION.md.
+
+# --- Robot link (WebRTC to the dog) ------------------------------------------
+aiortc==1.15.0
+unitree_webrtc_connect==2.2.0
+aiohttp==3.14.3
+
+# --- Messaging / config ------------------------------------------------------
+paho-mqtt==2.1.0
+python-dotenv==1.2.3
+
+# --- LiDAR decode ------------------------------------------------------------
+# wasmtime executes external_lib/libvoxel.wasm — see the integrity check in
+# go2_robot_sdk/infrastructure/sensors/lidar_decoder.py.
+wasmtime==48.0.0
+# 0.18.0, not 0.19.0: 0.19 has no wheel for CPython 3.10 on manylinux_2_28, which
+# is exactly the interpreter and platform this image is.
+open3d==0.18.0
+
+# --- Detection (coco_detector_node) -----------------------------------------
+# x86_64 gets the CUDA build from PyPI, which is what the g4dn EC2 target runs
+# (coco_device:=cuda). aarch64 CANNOT use these pins — it needs the +cpu wheels in
+# requirements-arm64.in. Change one, change the other.
+torch==2.14.0
+torchvision==0.29.0
+
+# --- Media / crypto ---------------------------------------------------------
+opencv-python==4.11.0.86
+pydub==0.25.1
+# pycryptodome, NOT pycrypto — same `Crypto.*` import namespace, maintained fork.
+# Required by unitree-webrtc-connect, which does the Go2 handshake crypto; pinned
+# here so the version is ours to control rather than whatever resolves. No code in
+# this repository imports `Crypto.*` directly.
+pycryptodome==3.23.0
+
+# --- Numerics ---------------------------------------------------------------
+# Held on the 1.x line on purpose: the ROS 2 Humble Python packages in this image
+# are built against the NumPy 1 C ABI. docker/Dockerfile installs this first for
+# the same reason.
+numpy==1.26.4
+
+# --- AWS -------------------------------------------------------------------
+boto3==1.43.88
+requests==2.34.2

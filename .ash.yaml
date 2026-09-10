@@ -1,0 +1,134 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/awslabs/automated-security-helper/refs/heads/main/automated_security_helper/schemas/AshConfig.json
+#
+# Automated Security Helper (ASH) config. Run a scan with:
+#   uvx --from automated-security-helper ash --mode local
+#
+# Reports land in .ash/ash_output/ (gitignored); start with reports/ash.summary.txt.
+#
+# Five scanners run out of the box (bandit, checkov, detect-secrets, npm-audit,
+# semgrep). cdk-nag, cfn-nag, grype, opengrep and syft report MISSING until their
+# tooling is on the box — they are not disabled here, so installing the tools is
+# all it takes to turn them on:
+#   uvx --from 'automated-security-helper[cdk]' ash   # cdk-nag
+#   brew install grype syft opengrep                  # SCA + extra SAST
+#   gem install cfn-nag                               # cfn-nag
+#
+# grype and syft are the only SCA scanners in the set, so until they are installed
+# NO dependency vulnerability scanning happens here and no SBOM is produced. Until
+# then, `make audit` covers the Python and npm halves with no tooling required
+# (scripts/audit_deps.py queries OSV directly). It is not a substitute: it does not
+# see OS packages from the container base images. Install grype and syft.
+project_name: go2_ros2_sdk
+
+global_settings:
+  severity_threshold: MEDIUM
+
+  # Every entry below is a reviewed false positive or an accepted constraint of
+  # the runtime we deploy to. Anything fixable was fixed in the source instead.
+  # Suppressions stay visible in the reports and ASH flags the unused ones in
+  # reports/ash.unused-suppressions.md — prune them when the reason expires.
+  #
+  # This file only binds ASH. An external scanner never reads it, so each bandit
+  # entry that maps to one line also carries an inline `# nosec <ID>` pragma at
+  # the call site, which travels with the code.
+  #
+  # Semgrep is different: do not rely on `# nosemgrep` holding. The review
+  # pipeline runs semgrep with inline suppressions disabled, so a pragma there is
+  # ignored and the finding comes back. A semgrep finding has to be answered by
+  # changing the code until the rule no longer matches — see the ffmpeg calls in
+  # kvs_utils.py and kvs_producer_node.py, where writing the argv list out at the
+  # call site keeps the program name a visible literal and satisfies the rule.
+  suppressions:
+    - rule_id: 'B104'
+      path: 'voice_agent/agentcore_server.py'
+      reason: >-
+        Binding 0.0.0.0:8080 is Bedrock AgentCore Runtime's container contract.
+        The port is only reachable inside the AgentCore-managed task; nothing
+        publishes it. See the comment at the call site for why the host is set
+        explicitly rather than auto-detected.
+
+    - rule_id: 'python.flask.security.audit.app-run-param-config.avoid_app_run_with_bad_host'
+      path: 'voice_agent/agentcore_server.py'
+      reason: >-
+        Same 0.0.0.0 bind as B104 above, reported by semgrep.
+
+    - rule_id: 'CKV_DOCKER_*'
+      path: 'deployment/lambdas/scene-describer/Dockerfile'
+      reason: >-
+        Lambda container image. The Lambda service ignores HEALTHCHECK
+        (CKV_DOCKER_2) and runs the function in its own sandbox as a non-root
+        user regardless of USER (CKV_DOCKER_3), so neither instruction changes
+        the deployed security posture.
+
+    - rule_id: 'CKV_DOCKER_*'
+      path: 'docker/Dockerfile'
+      reason: >-
+        Robot-side ROS 2 container, run with host networking and device access
+        (see DEVELOPER_GUIDE). It needs root for /dev and builds its colcon
+        workspace under root's HOME (CKV_DOCKER_3), and it has no HTTP surface
+        to health-check — liveness is judged from ROS topics (CKV_DOCKER_2).
+
+    - rule_id: 'SECRET-BASE64-HIGH-ENTROPY-STRING'
+      path: 'docs/Architecture Diagram.drawio'
+      reason: >-
+        High-entropy strings in this file are draw.io-generated mxCell element
+        IDs, not credentials. The file is rewritten by draw.io on every save, so
+        an inline pragma would not survive.
+
+    - rule_id: 'SECRET-SECRET-KEYWORD'
+      path: 'AWS_DEPLOYMENT.md'
+      reason: >-
+        Documentation placeholders in shell examples (YOUR_UNITREE_PASSWORD and
+        friends). Real values live only in Secrets Manager — the guide's whole
+        point is that they never enter the repo or a CFN parameter.
+
+    - rule_id: 'SECRET-SECRET-KEYWORD'
+      path: 'DEVELOPER_GUIDE.md'
+      reason: >-
+        Documentation placeholders in shell examples (AWS_SECRET_ACCESS_KEY=<your
+        secret> and friends). No real credential is ever committed here.
+
+    # --- Scanner findings traced to source and found false or inapplicable ----
+
+    - rule_id: 'B310'
+      path: 'scripts/audit_deps.py'
+      reason: >-
+        Single urlopen, against the module-level OSV_BATCH constant. The scheme
+        the rule cares about is now asserted at the call site (`req.type` must be
+        https), so a file:// or custom-scheme URL raises instead of being fetched.
+
+    - rule_id: 'B603'
+      path: 'deployment/edge/kvs_producer/*.py'
+      reason: >-
+        argv-list ffmpeg call, no shell=True, program name a literal at the call
+        site. B603 fires on every subprocess call regardless, so it cannot be
+        cleared in source the way the Semgrep equivalent was.
+
+    - rule_id: 'B603'
+      path: 'deployment/lambdas/shared/python/kvs_utils.py'
+      reason: >-
+        argv-list ffmpeg call, no shell=True, program name a literal at the call
+        site. B603 fires on every subprocess call regardless, so it cannot be
+        cleared in source the way the Semgrep equivalent was.
+
+    - rule_id: 'B603'
+      path: 'go2_robot_sdk/go2_robot_sdk/kvs_producer_node.py'
+      reason: >-
+        argv-list ffmpeg call, no shell=True, program name a literal at the call
+        site. B603 fires on every subprocess call regardless, so it cannot be
+        cleared in source the way the Semgrep equivalent was.
+
+    - rule_id: 'B107'
+      path: 'go2_robot_sdk/go2_robot_sdk/infrastructure/webrtc/go2_connection.py'
+      reason: >-
+        Match is the default parameter `token: str = ""`. Bandit's
+        hardcoded_password_default check matches the parameter NAME; the value is
+        the empty string and the real token arrives at run time.
+
+    - rule_id: 'guru/SecureCdkBsc43Violation'
+      path: 'deployment/bin/prototype-security.ts'
+      reason: >-
+        This file is the nag-pack rule DEFINITION, not a bucket declaration. The
+        repository creates no S3 bucket anywhere — there is nothing to enable
+        access logging on. The rubric separately returned not_applicable for
+        S3 Bucket Squatting Prevention, for the same reason.

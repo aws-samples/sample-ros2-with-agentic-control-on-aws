@@ -1,0 +1,57 @@
+# Go2 Nova Sonic voice agent for Amazon Bedrock AgentCore Runtime.
+#
+# AgentCore Runtime requires linux/arm64 images. CDK's DockerImageAsset sets the
+# platform when it builds this (see Go2AgentCoreStack), but if you build by hand
+# on an x86 machine, pass it explicitly:
+#   docker build --platform linux/arm64 -f voice_agent/Dockerfile.agentcore .
+#
+# Build context is the REPO ROOT, not voice_agent/ — the agent is imported as
+# the `voice_agent` package (`python -m voice_agent.agentcore_server`), so the
+# package directory has to land under /app with its name intact.
+#
+# Note this image contains NO ROS2 and no audio libraries. The agent reaches the
+# robot over the Foxglove WebSocket bridge (pure Python, see go2_ros2_client.py)
+# and audio arrives over its own WebSocket, so neither is needed.
+# Pulled from ECR Public rather than Docker Hub — `public.ecr.aws/docker/library/
+# python` is the mirror of the same official image, and the digest below is
+# byte-identical to Docker Hub's `python:3.13-slim`. See docker/Dockerfile.
+#
+# Pinned by DIGEST for build reproducibility. This is the multi-platform index
+# digest, so --platform still selects arm64 from within it. Recorded in
+# THIRD-PARTY-LICENSES.
+FROM --platform=linux/arm64 public.ecr.aws/docker/library/python:3.13-slim@sha256:9d2e5553305c7c7b0097999bb17187c69b921ccd6bc9d40e4bb5ebe652c00285
+
+WORKDIR /app
+
+# Dependencies first so edits to the agent don't invalidate the pip layer.
+COPY voice_agent/requirements-agentcore.txt /app/requirements-agentcore.txt
+# --require-hashes: every artifact is checked against the sha256 recorded in the
+# compiled file, so a substituted or re-uploaded wheel fails the build instead of
+# shipping. It also refuses any unpinned dependency, which is why `make lock`
+# generates hashes for the whole closure.
+RUN pip install --require-hashes --no-cache-dir -r /app/requirements-agentcore.txt
+
+COPY voice_agent/ /app/voice_agent/
+
+# Fail fast at build time if the module graph is broken (a missing dep here is
+# far cheaper to find now than as a CloudFormation timeout during deploy).
+RUN python -c "import voice_agent.agentcore_server"
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1
+
+# AgentCore's contract: WebSocket at /ws and health at /ping, both on 8080.
+EXPOSE 8080
+
+# Same /ping endpoint, checked from inside the container. urllib rather than curl
+# because python:3.13-slim ships no curl and the agent needs no other tooling.
+# start-period covers the ~12s cold start (imports + first Bedrock client build).
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+    CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/ping', timeout=3)"]
+
+# Drop root. The agent only reads /app and binds 8080 (unprivileged), so it never
+# needs write access to the image or a privileged port.
+RUN useradd --create-home --uid 1000 agent
+USER agent
+
+CMD ["python", "-m", "voice_agent.agentcore_server"]
