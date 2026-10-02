@@ -125,7 +125,7 @@ aiohttp==3.14.3 \
     --hash=sha256:fa9467a8113aa69d3d7c55a70ef0b7c636010a40993f3df9d9d0d73b3eb7ef24 \
     --hash=sha256:fd51ebf9d3a00c074df4ede271023f4d2dba289bcc740b88191872716014e3c5
     # via
-    #   -r voice_agent/requirements-agentcore.in
+    #   -r requirements-agentcore.in
     #   smithy-http
     #   strands-agents-tools
 aiosignal==1.4.0 \
@@ -155,7 +155,7 @@ aws-requests-auth==0.4.3 \
     --hash=sha256:33593372018b960a31dbbe236f89421678b885c35f0b6a7abfae35bb77e069b2 \
     --hash=sha256:646bc37d62140ea1c709d20148f5d43197e6bd2d63909eb36fa4bb2345759977
     # via strands-agents-tools
-aws-sdk-bedrock-runtime==0.11.0 \
+aws-sdk-bedrock-runtime[awscrt]==0.11.0 \
     --hash=sha256:ef01c26ddfd83a5d3e438ab72ebb3c13b41fc0ef11d81095b22c8016f97e9795 \
     --hash=sha256:f2c45d34625bf6a7b56375e29a53a16b376880bda771e4bbf7d84491622eb193
     # via strands-agents
@@ -224,12 +224,12 @@ beautifulsoup4==4.15.0 \
 bedrock-agentcore==1.22.0 \
     --hash=sha256:b4906b9c2a290e54eccd13bcf99191b890d27eedd3aa28ba756aff61d83a4948 \
     --hash=sha256:d5d7c5e61fd5118d2d8de87028a3522a99d86b4c82208f4d0f50d14cfd0e5150
-    # via -r voice_agent/requirements-agentcore.in
+    # via -r requirements-agentcore.in
 boto3==1.43.88 \
     --hash=sha256:62efee681fefc9b14244d66ab66ead11dd4a32fec0a54ac9f23106003ef210ca \
     --hash=sha256:b3d03fba8ace049de27e3a6ed69b25a55d752f49d563394985e805ed5f0a0a74
     # via
-    #   -r voice_agent/requirements-agentcore.in
+    #   -r requirements-agentcore.in
     #   bedrock-agentcore
     #   strands-agents
 botocore==1.43.88 \
@@ -1092,7 +1092,7 @@ numpy==2.5.2 \
     --hash=sha256:eaca7ff36f0f52e2111ec71f169d8fd3e889e7ddc0d2592e0d703fd8d3ce8fac \
     --hash=sha256:f06571a052127dc1b4e8b83029b4d1b20daa2b64a31cdd181fc6bc774e9000eb \
     --hash=sha256:fd0d703772bba096843785bd38371e31bb4a0c1151497ad5739d182114a73f7f
-    # via -r voice_agent/requirements-agentcore.in
+    # via -r requirements-agentcore.in
 opentelemetry-api==1.44.0 \
     --hash=sha256:67647e5e9566edcf421166fdf022b3537f818635daa852b289e34604dc6fb33a \
     --hash=sha256:94b98c893a91b88657eaac1e3ba89618cdb85be6918196705354f34728b2cdef
@@ -1213,7 +1213,7 @@ pillow==12.3.0 \
     --hash=sha256:fe3cca2e4e8a592be0f269a1ca4835c25199d9f3ce815c8491048f785b0a0198 \
     --hash=sha256:ffd0c5368496f41b0944be820fcb7a838aa6e623d250b01acf2643939c3f99d7
     # via
-    #   -r voice_agent/requirements-agentcore.in
+    #   -r requirements-agentcore.in
     #   strands-agents-tools
 prompt-toolkit==3.0.53 \
     --hash=sha256:01c0891d7f9237d5e339f7d3e42cdae80b7534abb1c7c0e3352efba6231492f2 \
@@ -1488,9 +1488,9 @@ pygments==2.21.0 \
     --hash=sha256:2363c69b61c4a97c838da3b130dcd6468f4848992b21a82f2a63ec34377137d9 \
     --hash=sha256:610ca751c9bc2492b38eb9a38a7fbc93edbbb2d7182edaf34e66ae493dee5c8c
     # via rich
-pyjwt==2.13.0 \
-    --hash=sha256:41571c89ca91598c79e8ef18a2d07367d4810fbbd6f637794879baf1b7703423 \
-    --hash=sha256:66adcc2aff09b3f1bbd95fc1e1577df8ac8723c978552fd43304c8a290ac5728
+pyjwt[crypto]==2.15.0 \
+    --hash=sha256:7a3742debf6b879e912dbb9819ceec1594be812452b78c5f2e2dfc56564954f8 \
+    --hash=sha256:b11c5f9791d7bf51c2b39a81ed669f6b2dbbd669df2942f6c60167e9e3d1abe4
     # via
     #   mcp
     #   strands-agents-tools
@@ -1735,7 +1735,7 @@ slack-sdk==3.44.1 \
     --hash=sha256:ca19505423789fa2a3189ff486f989f02e49289f008d0a5813df7255b3fb93ea \
     --hash=sha256:d6f20a0fbe3fecf9cac955c99d686301b48a645b7045472c3a0cdd186d7c42b2
     # via slack-bolt
-smithy-aws-core==0.11.0 \
+smithy-aws-core[eventstream,json]==0.11.0 \
     --hash=sha256:29ee89976a520a87e3db557e03e115fdc21a0a60b81161e95174395a1b064da1 \
     --hash=sha256:77cf130c22deac14a8cbeb8ccc4bcfe5a91798f4b38cb53a987080ec58c89f23
     # via
@@ -1755,7 +1755,7 @@ smithy-core==0.8.1 \
     #   smithy-http
     #   smithy-json
     #   strands-agents
-smithy-http==0.5.0 \
+smithy-http[aiohttp,awscrt]==0.5.0 \
     --hash=sha256:af273d5f42e7733ce7a6e9bd6fdd6a59ef1b61f6cd1f4a89dd53dfce99da7bef \
     --hash=sha256:bb4a19672f7c7eeb872a308f777eb505281a5bafb1ee3d1ea9c760c06c352510
     # via
@@ -1780,16 +1780,16 @@ starlette==1.6.0 \
     #   bedrock-agentcore
     #   mcp
     #   sse-starlette
-strands-agents==1.54.0 \
+strands-agents[bidi]==1.54.0 \
     --hash=sha256:8351ae5962a0cf51c0c8d6ae928752ab5331671603393aef9d267d1c435aa3c3 \
     --hash=sha256:ca37b9001531596a634e9249f97fb03ce70997e216f6a71d4e8f8182818cbf5c
     # via
-    #   -r voice_agent/requirements-agentcore.in
+    #   -r requirements-agentcore.in
     #   strands-agents-tools
 strands-agents-tools==0.8.8 \
     --hash=sha256:5e075462cdfc3cd96b31d5a3a552e24d5eacae42687e5378c1e5a469c7ef9d64 \
     --hash=sha256:7ec790d888ea5e24df038f40bcd52aa6ba82d86c578e5148f306c0969e5cbade
-    # via -r voice_agent/requirements-agentcore.in
+    # via -r requirements-agentcore.in
 sympy==1.14.0 \
     --hash=sha256:d3d3fe8df1e5a0b42f0e7bdf50541697dbe7d23746e894990c030e2b05e72517 \
     --hash=sha256:e091cc3e99d2141a0ba2847328f5479b05d94a6635cb96148ccb3f34671bd8f5
