@@ -1810,8 +1810,8 @@ torch==2.14.0+cpu \
     --hash=sha256:f2ffdacd95d7090a8bdfa8426f5d1557625874b19a96ba23a41f640d4a0c9c28 \
     --hash=sha256:ff2e3a049e4c6d406d2f87acad9b2907d5052a3fa6d0e658b5f6e48d46bae11b
     # via
-    #   -r requirements-arm64.in
     #   -r requirements.in
+    #   -r requirements-arm64.in
     #   torchvision
 torchvision==0.29.0+cpu \
     --hash=sha256:0941ad2ce731feb062300a7faf9bbde484896f9500f19523319d110ecaed2bc8 \
@@ -1839,8 +1839,8 @@ torchvision==0.29.0+cpu \
     --hash=sha256:eb44d9535d16ff11572960b241917f1adbcd133531d838b7bc4a32316d27efee \
     --hash=sha256:f32547706851d8bf7665ba8503c8ed9a46a8b3ebba384bfe9778e635476f99f4
     # via
-    #   -r requirements-arm64.in
     #   -r requirements.in
+    #   -r requirements-arm64.in
 traitlets==5.16.1 \
     --hash=sha256:ed900c2b631aa3a112811139fa97b8d2c3bad5e989656bba4b7e52c7852c18c1 \
     --hash=sha256:f775618166caa0396c8e337099240f2bd3e5e917d203b2e6fbe21a58d3cb1f6b
@@ -1871,9 +1871,9 @@ unitree-webrtc-connect==2.2.0 \
     --hash=sha256:40b3b2dfee0599c79e419e90de49386629a506475227a1757c5fbea6e3b8d77d \
     --hash=sha256:ee8c1de7d149bf7ef5b0fc88f0ceca3fa48c2bde468ec2fea17b7de60a084908
     # via -r requirements.in
-urllib3==2.7.0 \
-    --hash=sha256:231e0ec3b63ceb14667c67be60f2f2c40a518cb38b03af60abc813da26505f4c \
-    --hash=sha256:9fb4c81ebbb1ce9531cce37674bbc6f1360472bc18ca9a553ede278ef7276897
+urllib3==2.8.0 \
+    --hash=sha256:0cf3cae568d36aa9576b28dfb35f11328f1cb974ca7647d9475ebb86c75ac6e3 \
+    --hash=sha256:63bf2ead4c879426ebf22ef2a781eeb4aa3b4ae798a0435506f8687fd5bb9b63
     # via
     #   botocore
     #   requests
