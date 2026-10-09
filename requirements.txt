@@ -2733,9 +2733,9 @@ unitree-webrtc-connect==2.2.0 \
     --hash=sha256:40b3b2dfee0599c79e419e90de49386629a506475227a1757c5fbea6e3b8d77d \
     --hash=sha256:ee8c1de7d149bf7ef5b0fc88f0ceca3fa48c2bde468ec2fea17b7de60a084908
     # via -r requirements.in
-urllib3==2.7.0 \
-    --hash=sha256:231e0ec3b63ceb14667c67be60f2f2c40a518cb38b03af60abc813da26505f4c \
-    --hash=sha256:9fb4c81ebbb1ce9531cce37674bbc6f1360472bc18ca9a553ede278ef7276897
+urllib3==2.8.0 \
+    --hash=sha256:0cf3cae568d36aa9576b28dfb35f11328f1cb974ca7647d9475ebb86c75ac6e3 \
+    --hash=sha256:63bf2ead4c879426ebf22ef2a781eeb4aa3b4ae798a0435506f8687fd5bb9b63
     # via
     #   botocore
     #   requests
