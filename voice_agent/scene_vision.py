@@ -289,7 +289,8 @@ class SceneVisionMixin:
         resp = self._bedrock.converse(
             modelId=config.SCENE_MODEL_ID,
             messages=[{"role": "user", "content": content}],
-            system=[{"text": config.SCENE_SYSTEM_PROMPT}],
+            system=[{"text": f"{config.SCENE_SYSTEM_PROMPT}\n\n"
+                             f"{config.SCENE_PEOPLE_GUIDELINES}"}],
             inferenceConfig={"maxTokens": config.SCENE_MAX_TOKENS},
             **config.guardrail_config(),
         )

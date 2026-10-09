@@ -42,12 +42,15 @@ rather than by describing a past frame in isolation.
 """
 
 import json
+import logging
 import os
 
 import boto3
 from strands import tool
 
 from . import config
+
+logger = logging.getLogger(__name__)
 
 _REGION = os.environ.get("AWS_DEFAULT_REGION", "us-east-1")
 
