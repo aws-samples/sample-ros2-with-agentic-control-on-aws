@@ -203,7 +203,7 @@ defaults work for the standard local setup. These apply to both entry points:
 | `ROS_BRIDGE_HOST` | `localhost` | foxglove_bridge host (`main.py`) |
 | `ROS_BRIDGE_PORT` | `8766` | foxglove_bridge port (`main.py`) |
 | `AWS_BEDROCK_PROFILE` | *(unset → default chain)* | AWS profile for Nova Sonic |
-| `NOVA_SONIC_MODEL_ID` | `amazon.nova-2-sonic-v1:0` | Bedrock model id |
+| `NOVA_SONIC_MODEL_ID` | `amazon.nova-2-5-sonic` | Bedrock model id |
 | `NOVA_SONIC_REGION` | `us-east-1` | Bedrock region (also the default for `SCENE_REGION`) |
 | `GUARDRAIL_ID` | *(unset → no guardrail)* | Amazon Bedrock Guardrail applied to every vision call. `Go2GuardrailStack` creates it and every other stack passes it in; set it by hand for a local run (below) |
 | `GUARDRAIL_VERSION` | `DRAFT` | Guardrail version. Pin a number for production |

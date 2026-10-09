@@ -177,9 +177,9 @@ def get_unitree_password() -> str:
 # Profile is optional: if AWS_BEDROCK_PROFILE is unset, the default credential
 # chain (env vars / SSO / instance role) is used.
 AWS_BEDROCK_PROFILE = os.environ.get("AWS_BEDROCK_PROFILE") or None
-NOVA_SONIC_MODEL_ID = os.environ.get("NOVA_SONIC_MODEL_ID", "amazon.nova-2-sonic-v1:0")
+NOVA_SONIC_MODEL_ID = os.environ.get("NOVA_SONIC_MODEL_ID", "amazon.nova-2-5-sonic")
 # us-east-1 is where this demo's stacks live (Go2Ec2Stack, Go2AgentCoreStack,
-# Go2KVSStack) and it carries amazon.nova-2-sonic-v1:0 plus the Claude scene
+# Go2KVSStack) and it carries amazon.nova-2-5-sonic plus the Claude scene
 # inference profile, so everything stays in one region.
 NOVA_SONIC_REGION = os.environ.get("NOVA_SONIC_REGION", "us-east-1")
 
