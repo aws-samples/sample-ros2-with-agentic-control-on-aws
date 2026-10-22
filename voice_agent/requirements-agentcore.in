@@ -44,7 +44,7 @@ strands-agents-tools==0.8.8
 boto3==1.43.88
 
 # Foxglove WebSocket client transport (CDR encoded ourselves)
-aiohttp==3.14.3
+aiohttp==3.14.4
 
 # Vision tools: decode the camera's sensor_msgs/Image (numpy) and JPEG-encode
 # it (Pillow) before sending to Bedrock.
